@@ -1,0 +1,6 @@
+#El proyecto contenido en esta carpeta 
+es el Sistema de Soporte Técnico el cual 
+contiene mejoras en procesamiento de datos,
+cambios en la interfaz de usuario, tipo de información mostrada.
+
+El dia 18-01-19 se comienza a implementar la plantilla AdminLTE 2.4
