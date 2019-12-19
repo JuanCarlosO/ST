@@ -1,7 +1,7 @@
 <?php
 class AnexGrid
 {
-    public $limite = 0;
+    public $limite = 25;
     public $pagina = 0;
     public $columna = '';
     public $columna_orden = '';

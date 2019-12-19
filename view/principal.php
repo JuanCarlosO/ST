@@ -168,6 +168,7 @@
 							  		include 'view/pages/sti/modals/modal_detalle.php';
 							  		include 'view/pages/sti/modals/modal_actualizar_garantia.php';
 							  		include 'view/pages/sti/modals/modal_repara_externo.php';
+							  		include 'view/pages/sti/modals/modal_atender_rep_ext.php';
 									break;
 								case 'reparacion_int':
 									include 'view/pages/sti/content_header/header_r_int.php';
@@ -183,6 +184,7 @@
 								case 'cloud':
 									include 'view/pages/sti/content_header/header_cloud.php';
 							  		include 'view/pages/sti/content_main/content_cloud.php';
+							  		include 'view/pages/sti/modals/modal_ver_documento.php';
 									break;
 								
 							  	default:

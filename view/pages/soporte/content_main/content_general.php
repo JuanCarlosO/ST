@@ -38,25 +38,6 @@
                     		</div>
                     	</div>
                     </div>	
-					<div class="row">
-						<div class="col-md-12">
-							<div class="table-responsive">
-								<table id="solicitudes" class="table table-condensed table-hover table-bordered">
-									<thead>
-										<tr>
-											<th class="text-center" width="5%">#</th>
-											<th class="text-center" width="60%">Descripción de la falla</th>
-											<th class="text-center" width="15%">Quien presenta la falla</th>
-											<th class="text-center" width="10%">Fecha de solicitud</th>
-											<th class="text-center" width="10%">Acciones</th>
-										</tr>
-									</thead>
-									<tbody></tbody>
-								</table>
-							</div>
-						</div>
-					</div>
-					
 				</div>
 			</div>
 		</div>

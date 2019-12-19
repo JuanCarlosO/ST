@@ -344,6 +344,12 @@ if ( isset( $_POST['option'] ) )
 		case '89':
 			echo $sti->getTipoDoc();	
 			break;
+		case '90':
+			echo $sti->getDocumento();	
+			break;
+		case '91':
+			echo $sti->atenderRExterna();	
+			break;
 		
 		default:
 			echo json_encode(array('estado'=>'error','message'=>'El puente no encontro la ruta a la que desea enlazarse.'));
@@ -403,6 +409,19 @@ elseif( isset($_GET) )
 			# Autocompletado del bienes por serie
 			echo $sti->getRExternas();
 			break;
+		case '13':
+			# Autocompletado del bienes por serie
+			echo $sti->getDocumentos();
+			break;
+		case '14':
+			# Autocompletado del bienes por serie
+			echo $sti->getNamesDocs();
+			break;
+		case '15':
+			# Autocompletado del bienes por serie
+			echo $sti->getRExternasByDoc();	
+			break;
+			
 		default:
 			# code...
 			break;

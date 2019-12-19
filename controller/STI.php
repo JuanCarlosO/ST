@@ -244,6 +244,25 @@ class STI
 	{
 		return $this->model->getTipoDoc();
 	}
-	
+	public function getDocumentos()
+	{
+		return $this->model->getDocumentos();
+	}
+	public function getDocumento()
+	{
+		return $this->model->getDocumento();
+	}
+	public function getNamesDocs()
+	{
+		return $this->model->getNamesDocs();
+	}
+	public function atenderRExterna()
+	{
+		return $this->model->atenderRExterna();
+	}
+	public function getRExternasByDoc()
+	{
+		return $this->model->getRExternasByDoc();
+	}
 }
  ?>

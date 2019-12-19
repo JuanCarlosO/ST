@@ -273,25 +273,68 @@ class SoporteModel extends Conection
 	{
 		try 
 		{
+			session_start();
+			$st_person = $_SESSION['person_id'];
 			#Insertar la solución
 			
 			$this->sql = "
 				INSERT INTO soluciones(id, fecha, desc_solucion, tbien_id) VALUES ('',NOW(),'ENVIADO A REPARACIÓN EXTERNA',?);
 			";
 			$this->stmt = $this->pdo->prepare( $this->sql );
-			$this->stmt->bindParam(1,$id);
+			$this->stmt->bindParam(1,$bien);
 			$this->stmt->execute();
 			#******RECUPERAR EL ID DE A SOLUCION INSERTADA*******************
 			$solucion = $this->pdo->lastInsertId();
 			#************************************************
 			$this->sql = "
-				UPDATE reparaciones SET estatus = 1 , t_repa = 2 , solucion_id =? WHERE id = ?
+				SELECT * FROM soluciones WHERE id = ?
 			";
 			$this->stmt = $this->pdo->prepare( $this->sql );
 			$this->stmt->bindParam(1,$solucion);
-			$this->stmt->bindParam(2,$id);
+			$this->stmt->execute();
+			$bien = $this->stmt->fetch(PDO::FETCH_OBJ);
+
+			$this->sql = "
+				UPDATE reparaciones SET estatus = 1 , t_repa = 2 , solucion_id =?, solucionador_id=? WHERE id = ?
+			";
+			$this->stmt = $this->pdo->prepare( $this->sql );
+			$this->stmt->bindParam(1,$solucion);
+			$this->stmt->bindParam(2,$st_person);
+			$this->stmt->bindParam(3,$id);
 			$this->stmt->execute();
 
+			#INICIALIZAR LA REPARACION EXTERNA 
+			$this->sql = "INSERT INTO repa_externa (
+				id, 
+				bien_id, 
+				reporte_id, 
+				f_solicitud, 
+				f_reparacion, 
+				reporte, 
+				reporto, 
+				garantia, 
+				estatus, 
+				observaciones, 
+				tipo
+			)
+			VALUES (
+				'',
+				?,
+				?,
+				DATE(NOW()),
+				NULL,
+				NULL,
+				?,
+				NULL,
+				1,
+				NULL,
+				NULL
+			);";
+			$this->stmt = $this->pdo->prepare( $this->sql );
+			$this->stmt->bindParam(1,$bien->id);
+			$this->stmt->bindParam(2,$id);
+			$this->stmt->bindParam(3,$st_person);
+			$this->stmt->execute();
 			return json_encode( array('estado'=>'success','message'=>'success')  );	
 		} catch (Exception $e) {
 			return json_encode( array( 'message'=>$e->getMessage() ) );
@@ -1432,7 +1475,7 @@ class SoporteModel extends Conection
 					}
 				}
 			}
-			$this->sql = "SELECT t.id,UPPER(t.desc_falla) AS falla,t.fecha,r.t_repa,r.estatus,s.fecha AS f_solucion,UPPER(s.desc_solucion ) AS solucion,r.id AS reparacion,r.afectado_id,
+			$this->sql = "SELECT t.id,UPPER(t.desc_falla) AS falla,t.fecha,r.t_repa,r.estatus,s.fecha AS f_solucion,UPPER(s.desc_solucion ) AS solucion,r.id AS reparacion,r.afectado_id
 
 			FROM tickets AS t 
 			LEFT JOIN reparaciones AS r ON r.ticket_id = t.id

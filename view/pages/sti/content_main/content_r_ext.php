@@ -12,7 +12,7 @@
                     </div>
                 </div>
                 <div class="box-body">
-                  <div class="row">
+                  <!-- <div class="row">
                     <div class="col-md-4"> 
                       <button class="btn btn-block btn-social btn-success btn-flat" data-toggle="modal" data-target="#addGarantia">
                         <i class="fa fa-plus"></i> Alta de garantía
@@ -20,7 +20,7 @@
                     </div>
                     <div class="col-md-4"></div>
                     <div class="col-md-4"></div>
-                  </div>
+                  </div> -->
                   <div class="row">
                     <div class="col-md-12">
                       <div id="alert" class="alert alert-dismissible hidden">
@@ -30,6 +30,24 @@
                       </div>
                     </div>
                   </div>
+                  <h3>Buscar por nombre de documento</h3>
+                  <div class="row">
+                      <div class="col-md-10">
+                        <label>Buscar equipos involucrados por nombre de dumento</label>
+                        <div class="input-group">
+                          <input type="text" class="form-control" name="name_doc" id="name_doc">
+                          <input type="hidden" id="name_doc_h" name="name_doc_h" value="">
+                              <span class="input-group-btn">
+                                <button type="button" class="btn btn-success btn-flat" onclick="buscar_re_documento();">
+                                  <i class="fa fa-search"></i>
+                                </button>
+                              </span>
+                        </div>
+                      </div>
+                  </div>
+                  <br>
+                  
+                  
                   <div class="table-responsive">
                     <div id="reparacion_externa"></div>
                   </div>

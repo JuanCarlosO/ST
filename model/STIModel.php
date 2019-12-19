@@ -1948,13 +1948,14 @@ class STIModel extends Conection
                 CONCAT(pe.nombre,' ',pe.ap_pat,' ',pe.ap_mat) AS solucionador
 			FROM
 			    reparaciones AS r
-			LEFT JOIN soluciones AS s 	ON s.id = r.solucion_id
-			LEFT JOIN bienes 	AS b 	ON b.id = s.tbien_id 
-			LEFT JOIN marcas 	AS m 	ON m.id = b.marca_id  
-			LEFT JOIN grupos 	AS g 	ON g.id = b.grupo_id
-			LEFT JOIN t_bienes AS tb 	ON tb.id = b.tipo_id
-			LEFT JOIN personal AS p 	ON p.id = r.afectado_id
-			LEFT JOIN personal AS pe 	ON pe.id = r.solucionador_id
+			INNER JOIN soluciones AS s 	ON s.id = r.solucion_id
+			INNER JOIN bienes 	AS b 	ON b.id = s.tbien_id 
+			INNER JOIN marcas 	AS m 	ON m.id = b.marca_id  
+			INNER JOIN grupos 	AS g 	ON g.id = b.grupo_id
+			INNER JOIN t_bienes AS tb 	ON tb.id = b.tipo_id
+			INNER JOIN personal AS p 	ON p.id = r.afectado_id
+			INNER JOIN personal AS pe 	ON pe.id = r.solucionador_id
+			
 			WHERE r.t_repa = 2
 			";
 			$this->stmt = $this->pdo->prepare( $this->sql );
@@ -1973,15 +1974,150 @@ class STIModel extends Conection
 			return json_encode( array('status'=>'error','message' => $e->getMessage() ) );
 		}
 	}
+	public function getRExternasByDoc()
+	{
+		try {
+			$anexGrid = new AnexGrid();
+			$wh = "";
+			$doc = $anexGrid->parametros[1]['d'];
+			
+			$this->sql = "
+			SELECT r_externa FROM servicio_docs WHERE documento = $doc GROUP BY r_externa
+			";
+			$this->stmt = $this->pdo->prepare( $this->sql );
+			$this->stmt->execute();
+			$this->result = $this->stmt->fetchAll(PDO::FETCH_OBJ);
+			$aux = array( );
+			foreach ($this->result as $key => $r) {
+				array_push($aux,$r->r_externa);
+			}
+			$aux 	= implode(',',$aux);
+			$this->sql = "
+			SELECT
+			    r.id,
+			    r.ticket_id,
+			    r.afectado_id,
+			    r.solucionador_id,
+			    r.solucion_id,
+			    r.t_repa,
+			    r.estatus,
+			    r.rubro_id,
+			    r.falla_id,
+                s.fecha AS f_sol,
+                s.desc_solucion,
+                b.serie,
+                b.inventario,
+                m.nombre AS marca,
+                g.nombre AS grupo,
+                tb.nombre AS tipo_bien,
+                CONCAT(p.nombre,' ',p.ap_pat,' ',p.ap_mat) AS afectado,
+                CONCAT(pe.nombre,' ',pe.ap_pat,' ',pe.ap_mat) AS solucionador
+			FROM
+			    reparaciones AS r
+			INNER JOIN soluciones AS s 	ON s.id = r.solucion_id
+			INNER JOIN bienes 	AS b 	ON b.id = s.tbien_id 
+			INNER JOIN marcas 	AS m 	ON m.id = b.marca_id  
+			INNER JOIN grupos 	AS g 	ON g.id = b.grupo_id
+			INNER JOIN t_bienes AS tb 	ON tb.id = b.tipo_id
+			INNER JOIN personal AS p 	ON p.id = r.afectado_id
+			INNER JOIN personal AS pe 	ON pe.id = r.solucionador_id
+			INNER JOIN repa_externa AS re 	ON re.id IN ($aux)
+			WHERE r.t_repa = 2
+			";
+			$this->stmt = $this->pdo->prepare( $this->sql );
+			$this->stmt->execute();
+			$this->result = $this->stmt->fetchAll(PDO::FETCH_OBJ);
+
+			$this->sql = "SELECT COUNT(*) as Total FROM
+			    reparaciones AS r
+			INNER JOIN soluciones AS s 	ON s.id = r.solucion_id
+			INNER JOIN bienes 	AS b 	ON b.id = s.tbien_id 
+			INNER JOIN marcas 	AS m 	ON m.id = b.marca_id  
+			INNER JOIN grupos 	AS g 	ON g.id = b.grupo_id
+			INNER JOIN t_bienes AS tb 	ON tb.id = b.tipo_id
+			INNER JOIN personal AS p 	ON p.id = r.afectado_id
+			INNER JOIN personal AS pe 	ON pe.id = r.solucionador_id
+			INNER JOIN repa_externa AS re 	ON re.id IN ($aux)
+			WHERE r.t_repa = 2 ";
+			$this->stmt = $this->pdo->prepare( $this->sql );
+			$this->stmt->execute();
+			$total = $this->stmt->fetch( PDO::FETCH_OBJ )->Total;
+			return $anexGrid->responde($this->result, $total);
+		} catch (Exception $e) {
+			return json_encode( array('status'=>'error','message' => $e->getMessage() ) );
+		}
+	}
+
 	public function saveDoc()
 	{
 		try {
-			$this->sql = "INSERT INTO carpeta_digital(
-				id,tipo,formato, nombre,fecha_doc, propietario, observaciones, created_at, archivo
-			) 
-			VALUES(
-			''
-			)";
+			session_start();
+			#DATOS DEL POST 
+			$tipo = $_POST['t_doc'];
+			$nombre = $_POST['nombre'];
+			$fecha = $_POST['fecha_doc'];
+			$propietario = $_SESSION['person_id'];
+			$observaciones = $_POST['observaciones'];
+			#DATOS DEL FILES
+			$size = $_FILES['archivo']['size'];
+			$type = $_FILES['archivo']['type'];
+			$name = $_FILES['archivo']['name'];
+			$destiny = $_SERVER['DOCUMENT_ROOT'].'/ST/uploads/';
+			if ( $size > 10485760 ) 
+			{
+				throw new Exception("EL TAMAÑO DEL ARCHIVO EXCEDE EL LIMITE (10 MB)", 1);
+			}
+			else
+			{
+				if ( $type != 'application/pdf' ) 
+				{
+					throw new Exception("EL FORMATO DEL ARCHIVO NO ES SOPORTADO", 1);
+				}
+				else
+				{
+					#convertir a bytes
+					move_uploaded_file($_FILES['archivo']['tmp_name'],$destiny.$name);
+					$file = fopen($destiny.$name,'r');
+					$content = fread($file,$size);
+					$content = addslashes($content);
+					fclose($file);
+					#Insertar en la BD
+					$this->sql = "INSERT INTO carpeta_digital(
+						id,
+						tipo,
+						formato, 
+						nombre,
+						fecha_doc, 
+						propietario,
+						observaciones, 
+						created_at, 
+						archivo
+					) 
+					VALUES(
+					'',
+					?,
+					?,
+					?,
+					?,
+					?,
+					?,
+					NOW(),
+					?
+					)";
+					$this->stmt = $this->pdo->prepare( $this->sql );
+					$this->stmt->bindParam(1,$tipo,PDO::PARAM_STR);
+					$this->stmt->bindParam(2,$type,PDO::PARAM_STR);
+					$this->stmt->bindParam(3,$nombre,PDO::PARAM_STR);
+					$this->stmt->bindParam(4,$fecha,PDO::PARAM_STR);
+					$this->stmt->bindParam(5,$propietario,PDO::PARAM_STR);
+					$this->stmt->bindParam(6,$observaciones,PDO::PARAM_INT);	
+					$this->stmt->bindParam(7,$content,PDO::PARAM_LOB);			
+					$this->stmt->execute();
+					unlink($destiny.$name);
+					return json_encode( array('status'=>'success','message'=>'DOCUMENTO ALMACENADO DE MANERA EXITOSA.') );
+				}
+			}
+			
 			$this->stmt = $this->pdo->prepare($this->sql);
 			$this->stmt->execute();
 
@@ -1998,6 +2134,99 @@ class STIModel extends Conection
 			$this->stmt->execute();
 			$this->result = $this->stmt->fetchAll(PDO::FETCH_OBJ);
 			return json_encode($this->result) ;
+		} catch (Exception $e) {
+			return json_encode( array('status'=>'error','message' => $e->getMessage() ) );
+		}
+	}
+	public function getDocumentos()
+	{
+		try {
+			$anexGrid = new AnexGrid();
+			$wh = "";
+
+			foreach($anexGrid->filtros as $f)
+			{
+				if($f['columna'] != ''){
+					if ($f['columna'] == 'fecha_doc') {
+						$wh .= " AND cd.".$f['columna']." = '".$f['valor']."' ";
+					}elseif( $f['columna'] == 'observaciones'){
+						$wh .= " AND cd.".$f['columna']." LIKE '%".$f['valor']."%' ";
+					}elseif( $f['columna'] == 'nombre'){
+						$wh .= " AND cd.nombre LIKE '%".$f['valor']."%' ";
+					}else{
+						$wh .= " AND ".$f['columna']." LIKE '%".$f['valor']."%' ";
+					}
+					
+				}
+			}
+			$this->sql = "SELECT cd.id, cd.tipo,UPPER(td.nombre) AS tipo_d, cd.formato, UPPER(cd.nombre) AS nombre, cd.fecha_doc, cd.propietario, UPPER(cd.observaciones) AS observaciones, cd.created_at FROM carpeta_digital AS cd
+			INNER JOIN tipo_docs AS td ON td.id = cd.tipo
+			WHERE 1=1 $wh";
+
+			$this->stmt = $this->pdo->prepare($this->sql);
+			$this->stmt->execute();
+			$this->result = $this->stmt->fetchAll(PDO::FETCH_ASSOC);
+
+			$this->sql = "SELECT COUNT(cd.id) as Total FROM carpeta_digital AS cd
+			INNER JOIN tipo_docs AS td ON td.id = cd.tipo
+			WHERE 1=1 $wh";
+			$this->stmt = $this->pdo->prepare( $this->sql );
+			$this->stmt->execute();
+			$total = $this->stmt->fetch( PDO::FETCH_OBJ )->Total;
+			return $anexGrid->responde($this->result, $total);
+		} catch (Exception $e) {
+			return json_encode( array('status'=>'error','message' => $e->getMessage() ) );
+		}
+	}
+	public function getDocumento()
+	{
+		try {
+			$id = $_POST['doc'];
+			$evidencia = "";
+			$this->sql = "SELECT formato,archivo FROM carpeta_digital WHERE id = ?";
+			$this->stmt = $this->pdo->prepare($this->sql);
+			$this->stmt->bindParam(1,$id,PDO::PARAM_INT);
+			$this->stmt->execute();
+			$doc = $this->stmt->fetch(PDO::FETCH_OBJ);
+			$evidencia.= '<embed src="data:'.$doc->formato.';base64,'.base64_encode(stripslashes($doc->archivo)).'" type="'.$doc->formato.'" width="100%" height="600px" />';
+			return $evidencia;
+		} catch (Exception $e) {
+			return json_encode( array('status'=>'error','message' => $e->getMessage() ) );
+		}
+	}
+	public function getNamesDocs()
+	{
+		try {
+			$term = "%".$_REQUEST['term']."%";
+			$this->sql = "SELECT id,nombre AS value FROM carpeta_digital WHERE nombre LIKE ?";
+			$this->stmt = $this->pdo->prepare($this->sql);
+			$this->stmt->bindParam(1,$term,PDO::PARAM_STR);
+			$this->stmt->execute();
+			$this->result = $this->stmt->fetchAll(PDO::FETCH_OBJ);
+			
+			return json_encode($this->result);
+		} catch (Exception $e) {
+			return json_encode( array('status'=>'error','message' => $e->getMessage() ) );
+		}
+	}
+	public function atenderRExterna()
+	{
+		try {
+
+			$this->sql = "UPDATE repa_externa SET estatus = 2 , f_reparacion = DATE(NOW()) WHERE id = ?";
+			$this->stmt = $this->pdo->prepare($this->sql);
+			$this->stmt->bindParam(1,$_POST['re'],PDO::PARAM_INT);
+			$this->stmt->execute();
+			$this->sql = "INSERT INTO servicio_docs( id,r_externa, documento,observaciones ) VALUES ('',?,?,?);";
+			$this->stmt = $this->pdo->prepare($this->sql);
+			$this->stmt->bindParam(1,$_POST['re'],PDO::PARAM_INT);
+			$this->stmt->bindParam(2,$_POST['documento_h'],PDO::PARAM_INT);
+			$this->stmt->bindParam(3,$_POST['observaciones'],PDO::PARAM_STR);
+			$this->stmt->execute();
+
+			return json_encode( array('status'=>'success','message' =>'ATENCIÓN A LA REPARACIÓN EXTERNA ALMACENADA DE MANERA EXITOSA.' ) );
+			
+			return json_encode($this->result);
 		} catch (Exception $e) {
 			return json_encode( array('status'=>'error','message' => $e->getMessage() ) );
 		}

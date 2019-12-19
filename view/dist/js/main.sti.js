@@ -26,8 +26,13 @@ $(document).ready(function() {
         list_refacciones();
     }else if (url == '?menu=reparacion_ext'){
         reparacion_externa();
+        autocompletado('documento','documento_h',14);
+        autocompletado('name_doc','name_doc_h',14);
+        frm_rep_ext();
     }else if (url == '?menu=cloud'){
         get_tipo_doc('t_doc');
+        frm_save_doc();
+        list_documents();
     }
     else{
         load_catalogos();
@@ -3347,6 +3352,7 @@ function autocompletado(id,hidden,option)
     //Personal 1
     //Areas 3
     // Bienes 9
+    // documentos 14
     $( "#"+id ).autocomplete({
         source: 'controller/puente.php?option='+option,
         select: function( event, ui ){
@@ -3651,8 +3657,8 @@ function frm_add_refaccion() {
             alerta(response.status,response.message,'alert-refaccion','estado-refacciones','message-refacciones');
             document.getElementById("frm-add-refaccion").reset();
         })
-        .fail(function() {
-            alerta('error',response.message,'alert-refaccion','estado-refacciones','message-refacciones');
+        .fail(function(jqXHR,errorThrown,textStatus) {
+            alerta('error',jqXHR.responseText,'alert-refaccion','estado-refacciones','message-refacciones');
         });
     });
     return false;
@@ -3771,7 +3777,7 @@ function reparacion_externa() {
             { leyenda: 'ID', class:'text-center', style: 'width:30px;',ordenable:true,columna:'id'},
             { leyenda: 'Datos del bien',class:'text-center', style: 'width:100px;'},
             { leyenda: 'Datos del reporte',class:'text-center', style: 'width:100px;',columna:'tipo_b'},
-            { leyenda: 'Seguimiento de la reparación',class:'text-center', style: 'width:100px;'},
+            
             { leyenda: 'Observaciones',class:'text-center', style: 'width:120px;'},
             { leyenda: 'Estatus', class:'text-center', style: 'width:50px;',columna:'asignacion',filtro:function(){
                 return anexGrid_select({
@@ -3779,8 +3785,8 @@ function reparacion_externa() {
                     data:[
                         {valor:'',contenido:'Todos'},
                         {valor:'1',contenido:'Sin reparar'},
-                        {valor:'1',contenido:'En reparación'},
-                        {valor:'2',contenido:'Reparados'},
+                        {valor:'2',contenido:'Recolectado'},
+                        {valor:'3',contenido:'Reparados'},
                     ]
                 });
             }},
@@ -3821,14 +3827,20 @@ function reparacion_externa() {
                             '<li><label>Soluciono: </label> '+solucionador+'</li>'+
                         '</ol>';
             }},
-            { propiedad: 'material', class:'text-center' },
+            
             {class:'text-center', formato: function(tr, obj, valor){
-                return obj.estado;
+                return obj.desc_solucion;
             }},
-            { propiedad: 'descripcion', class:'text-center' },
             { class:'text-center', formato: function(tr, obj, valor){
-                return '<button class="btn btn-success btn-flat" data-toggle="tooltip" title="Iniciar tramite de reparación">'+
-                    '<i class="fa  fa-wrench"></i>'+
+                if (obj.estado == null || obj.estado == '') {
+                    return 'Sin estado' ;
+                }else{
+                    return obj.estado;
+                }
+            }},
+            { class:'text-center', formato: function(tr, obj, valor){
+                return '<button class="btn btn-success btn-flat" data-toggle="tooltip" title="Dar seguimiento a la reparación" onclick="atender_repa_ext('+obj.id+');">'+
+                    '<i class="fa fa-wrench"></i>'+
                 '</button>';
             }},
         ],
@@ -3866,4 +3878,233 @@ function get_tipo_doc(input) {
     });
     
     return false;
+}
+
+function frm_save_doc() {
+    $('#frm_save_doc').submit(function(e) {
+        e.preventDefault();
+        var dataForm = new FormData(document.getElementById("frm_save_doc"));
+        $.ajax({
+            url: 'controller/puente.php',
+            type: 'POST',
+            dataType: 'json',
+            data: dataForm,
+            async:false,
+            cache:false,
+            processData: false,
+            contentType: false,
+        })
+        .done(function(response) {
+            alerta(response.status,response.message,'alert','estado','message');
+            document.getElementById('frm_save_doc').reset();
+        })
+        .fail(function(jqXHR,errorThrown,textStatus) {
+            alerta('error',jqXHR.responseText,'alert','estado','message');
+        });
+        
+    });
+}
+
+function list_documents() {
+    var datos = {
+        class: 'table-striped table-bordered',
+        columnas: [
+            { leyenda: 'ID', class:'text-center', style: 'width:30px;',ordenable:true,columna:'id'},
+            { leyenda: 'Tipo de documento',class:'text-center', style: 'width:100px;'},
+            { leyenda: 'Formato',class:'text-center', style: 'width:100px;',columna:'tipo_b'},
+            { leyenda: 'Nombre',class:'text-center', style: 'width:100px;',columna:'nombre',filtro:function(){
+                return anexGrid_input({
+                    type:'text'
+                });
+            }},
+            { leyenda: 'Fecha',class:'text-center', style: 'width:120px',columna:'fecha_doc',filtro:function () {
+                return anexGrid_input({
+                    type:'date'
+                });
+            }},
+            { leyenda: 'Observaciones', class:'text-center', style: 'width:50px;',columna:'observaciones',filtro:function(){
+                return anexGrid_input({
+                    type:'text'
+                });
+            }},
+            { leyenda: 'Ver documento', class:'text-center', style: 'width:50px;' },
+            
+        ],
+        modelo: [
+            { propiedad: 'id', class:'text-center' },
+            { propiedad: 'tipo_d', class:'text-center' },
+            { class:'text-center',formato: function(tr, obj, valor){
+                if (obj.formato == "application/pdf") {
+                    return 'ARCHIVO PDF';
+                }
+            }},
+            { propiedad: 'nombre', class:'text-center' },
+
+            {class:'text-center', formato: function(tr, obj, valor){
+                
+                return obj.fecha_doc;
+            }},
+            { propiedad: 'observaciones', class:'text-center' },
+            
+            
+            { class:'text-center', formato: function(tr, obj, valor){
+                
+                return '<button class="btn btn-default btn-flat" onclick="ver_doc('+obj.id+');" data-toggle="tooltip" title="Ver el documento" value="'+obj.id+'"><i class="fa fa-eye"></i></button>';
+            }},
+        ],
+        url: 'controller/puente.php?option=13',
+        columna: 'id',
+        columna_orden: 'DESC',
+        ordenable: true,
+        type:'POST',
+        paginable:true,
+        limite:[25,50,100,200,500],
+        filtrable:true
+        
+    };
+    var tabla = $("#archivos").anexGrid(datos);
+    
+    return tabla;
+}
+function ver_doc(doc) {
+    $.ajax({
+        url: 'controller/puente.php',
+        type: 'POST',
+        dataType: 'html',
+        data: {option: '90',doc:doc},
+        async:false,
+    })
+    .done(function(response) {
+        $('#carga_documento').html(response);
+        $('#modal_ver_documento').modal('toggle');
+    })
+    .fail(function(jqXHR,errorThrown,textStatus) {
+        alert(jqXHR.responseText);
+    });
+    
+    return false;
+}
+function atender_repa_ext(re){
+    $('#modal_atender_rep_ext').modal('toggle');
+    $('#re').val(re);
+    return false;
+}
+function frm_rep_ext() {
+    $('#frm_rep_ext').submit(function(e) {
+        e.preventDefault();
+        var dataForm = $(this).serialize();
+        $.ajax({
+            url: 'controller/puente.php',
+            type: 'POST',
+            dataType: 'json',
+            data: dataForm,
+            async:false,
+        })
+        .done(function(response) {
+
+            alerta(response.status,response.message,'modal_alert_re','modal_estado_re','modal_message_re');
+        })
+        .fail(function(jqXHR,errorThrown,textStatus) {
+            alerta('error',jqXHR.responseText,'modal_alert_re','modal_estado_re','modal_message_re');
+        });
+        document.getElementById('frm_rep_ext').reset();
+        reparacion_externa();
+    });
+    return false;
+}
+function buscar_re_documento() {
+    var doc = $('#name_doc_h').val();
+    if ( doc != '' ) {
+        var datos = {
+                    class: 'table-striped table-bordered',
+                    columnas: [
+                        { leyenda: 'ID', class:'text-center', style: 'width:30px;',ordenable:true,columna:'id'},
+                        { leyenda: 'Datos del bien',class:'text-center', style: 'width:100px;'},
+                        { leyenda: 'Datos del reporte',class:'text-center', style: 'width:100px;',columna:'tipo_b'},
+                        
+                        { leyenda: 'Observaciones',class:'text-center', style: 'width:120px;'},
+                        { leyenda: 'Estatus', class:'text-center', style: 'width:50px;',columna:'asignacion',filtro:function(){
+                            return anexGrid_select({
+                                selected:0,
+                                data:[
+                                    {valor:'',contenido:'Todos'},
+                                    {valor:'1',contenido:'Sin reparar'},
+                                    {valor:'2',contenido:'Recolectado'},
+                                    {valor:'3',contenido:'Reparados'},
+                                ]
+                            });
+                        }},
+                        { leyenda: 'Acción',class:'text-center', style: 'width:100px;'},
+                    ],
+                    modelo: [
+                        { propiedad: 'id', class:'text-center' },
+                        { class:'text-center', formato:function(tr, obj, valor){
+                            var grupo,tipo_bien,marca,serie,inventario;
+                            if ( obj.grupo != null) {
+                                grupo       = obj.grupo;
+                                tipo_bien   = obj.tipo_bien;
+                                marca       = obj.marca;
+                                serie       = obj.serie;
+                                inventario  = obj.inventario;
+                            }else{
+                                grupo       = 'SIN INFORMACIÓN';
+                                tipo_bien   = 'SIN INFORMACIÓN';
+                                marca       = 'SIN INFORMACIÓN';
+                                serie       = 'SIN INFORMACIÓN';
+                                inventario  = 'SIN INFORMACIÓN';
+                            }
+                            return  '<ol>'+
+                                        '<li><label>Grupo: </label> '+grupo+'</li>'+
+                                        '<li><label>Tipo de bien: </label> '+tipo_bien+'</li>'+
+                                        '<li><label>Marca: </label> '+marca+'</li>'+
+                                        '<li><label>Serie/Inventario: </label> '+serie+' / '+inventario+'</li>'+
+                                    '</ol>';
+                        }},
+                        { class:'text-center', formato:function(tr, obj, valor) {
+                            if (obj.solucionador == null) {;
+                                solucionador = 'SIN ATENDER';
+                            }else{
+                                solucionador = obj.solucionador;
+                            }
+                            return  '<ol>'+
+                                        '<li><label>Afectado: </label> '+obj.afectado+'</li>'+
+                                        '<li><label>Soluciono: </label> '+solucionador+'</li>'+
+                                    '</ol>';
+                        }},
+                        
+                        {class:'text-center', formato: function(tr, obj, valor){
+                            return obj.desc_solucion;
+                        }},
+                        { class:'text-center', formato: function(tr, obj, valor){
+                            if (obj.estado == null || obj.estado == '') {
+                                return 'Sin estado' ;
+                            }else{
+                                return obj.estado;
+                            }
+                        }},
+                        { class:'text-center', formato: function(tr, obj, valor){
+                            return '<button class="btn btn-success btn-flat" data-toggle="tooltip" title="Dar seguimiento a la reparación" onclick="atender_repa_ext('+obj.id+');">'+
+                                '<i class="fa fa-wrench"></i>'+
+                            '</button>';
+                        }},
+                    ],
+                    url: 'controller/puente.php?option=15',
+                    columna: 'id',
+                    columna_orden: 'DESC',
+                    ordenable: true,
+                    type:'POST',
+                    paginable:true,
+                    limite:[25,50,100,200,500],
+                    filtrable:true,
+                    parametros:[
+                    {option: '92'},
+                    {d:doc}
+                    ]
+                    
+                };
+                var tabla = $("#reparacion_externa").anexGrid(datos);
+        
+    }else{
+        alert('NECESITA BUSCAR Y SELECCIONAR UN NOMBRE DE DOCUMENTO DISPONIBLE');
+    }
 }
